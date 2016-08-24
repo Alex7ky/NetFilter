@@ -12,6 +12,7 @@ static unsigned int hook(void *priv,
 	static struct udphdr *udp_header;     // udp header struct
 	static struct sk_buff *sock_buff;
 	static unsigned int sport, dport;
+	static long int udplen;
 
 	sock_buff = skb;
 	if (!sock_buff)
@@ -25,14 +26,17 @@ static unsigned int hook(void *priv,
 		dport = htons((unsigned short int) udp_header->dest);
 		pr_info("Source : %d\t Dest : %d\n", sport, dport);
 		if (udp_header->dest == ntohs(1338)) {
-			udp_header->dest = ntohs(1488);
+			pr_info("Old : %d\n", udp_header->check);
+			//udp_header->dest = ntohs(1488);
 
+			udplen = skb->len - (ip_hdr(skb)->ihl * 4);
 			udp_header->check = 0;
 			udp_header->check = csum_tcpudp_magic(ip_header->saddr,
-				ip_header->daddr, ntohl(udp_header->len),
+				ip_header->daddr, udplen,
 					IPPROTO_UDP,
-					csum_partial(udp_header,
-					ntohl(udp_header->len), 0));
+					csum_partial((char *)udp_header,
+					udplen, 0));
+			pr_info("New : %d\n", udp_header->check);
 		}
 		return NF_ACCEPT;
 	}
